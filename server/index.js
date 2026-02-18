@@ -26,11 +26,14 @@ async function connect() {
   }
   pool = new Pool({ connectionString: DATABASE_URL });
   await pool.query("SELECT 1");
-  // Ensure sessions table exists (run schema if missing)
+  // Ensure sessions table exists (run schema on startup)
   const schemaPath = path.join(__dirname, "..", "db", "schema.sql");
   if (fs.existsSync(schemaPath)) {
     const schema = fs.readFileSync(schemaPath, "utf8");
     await pool.query(schema);
+    console.log("Schema applied: sessions table ready");
+  } else {
+    console.warn("db/schema.sql not found at " + schemaPath + " – create sessions table manually or add db/ to the image");
   }
 }
 

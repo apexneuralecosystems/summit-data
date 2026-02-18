@@ -20,6 +20,7 @@ RUN npm ci --omit=dev 2>/dev/null || npm install --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY server ./server
+COPY db ./db
 COPY migrate-mongo-config.js ./
 COPY migrations ./migrations
 COPY scripts ./scripts
