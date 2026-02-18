@@ -9,6 +9,7 @@ const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
 const path = require("path");
+const fs = require("fs");
 
 const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URI;
 const PORT = parseInt(process.env.PORT) || 3000;
@@ -25,6 +26,12 @@ async function connect() {
   }
   pool = new Pool({ connectionString: DATABASE_URL });
   await pool.query("SELECT 1");
+  // Ensure sessions table exists (run schema if missing)
+  const schemaPath = path.join(__dirname, "..", "db", "schema.sql");
+  if (fs.existsSync(schemaPath)) {
+    const schema = fs.readFileSync(schemaPath, "utf8");
+    await pool.query(schema);
+  }
 }
 
 app.get("/api/sessions", async (req, res) => {
