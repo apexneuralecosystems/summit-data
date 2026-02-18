@@ -1,50 +1,76 @@
 /**
- * Express API for India AI Summit sessions
+ * Express API for India AI Summit sessions (PostgreSQL)
  * GET /api/sessions - list all
- * GET /api/sessions/:id - get one by _id
+ * GET /api/sessions/:id - get one by id or website_index
  * PATCH /api/sessions/:id/transcript - update transcript
  */
 require("dotenv/config");
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ObjectId } = require("mongodb");
+const { Pool } = require("pg");
 const path = require("path");
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://mongo:azxd4sgjly0aqgfh@indian-ai-summit-sessions-ltrzho:27017";
-const DB_NAME = process.env.MONGODB_DB || "indiaai";
-const COLLECTION = process.env.MONGODB_COLLECTION || "sessions";
+const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URI;
+const PORT = parseInt(process.env.PORT) || 3000;
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-let db;
+let pool;
 
 async function connect() {
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  db = client.db(DB_NAME);
+  if (!DATABASE_URL) {
+    throw new Error("Set DATABASE_URL or POSTGRES_URI in .env");
+  }
+  pool = new Pool({ connectionString: DATABASE_URL });
+  await pool.query("SELECT 1");
 }
 
 app.get("/api/sessions", async (req, res) => {
   try {
-    const coll = db.collection(COLLECTION);
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const skip = (page - 1) * limit;
-    const q = req.query.q
-      ? {
-          $or: [
-            { title: { $regex: req.query.q, $options: "i" } },
-            { speakers: { $regex: req.query.q, $options: "i" } },
-            { description: { $regex: req.query.q, $options: "i" } },
-          ],
-        }
-      : {};
-    const [sessions, total] = await Promise.all([
-      coll.find(q).sort({ website_index: 1 }).skip(skip).limit(limit).toArray(),
-      coll.countDocuments(q),
-    ]);
+    const offset = (page - 1) * limit;
+    const q = (req.query.q || "").trim();
+
+    let where = "";
+    const params = [];
+    if (q) {
+      where = "WHERE title ILIKE $1 OR speakers ILIKE $1 OR description ILIKE $1";
+      params.push("%" + q + "%");
+    }
+
+    const countResult = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM sessions " + where,
+      params
+    );
+    const total = countResult.rows[0].total;
+
+    params.push(limit, offset);
+    const sessionsResult = await pool.query(
+      `SELECT id, website_index, title, date, "time", venue, room, speakers, description, knowledge_partners, watch_live_link, transcript
+       FROM sessions ${where}
+       ORDER BY website_index ASC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+
+    const sessions = sessionsResult.rows.map((row) => ({
+      _id: row.id,
+      website_index: row.website_index,
+      title: row.title,
+      date: row.date,
+      time: row.time,
+      venue: row.venue,
+      room: row.room,
+      speakers: row.speakers,
+      description: row.description,
+      knowledge_partners: row.knowledge_partners,
+      watch_live_link: row.watch_live_link,
+      transcript: row.transcript || "",
+    }));
+
     res.json({ sessions, total, page, limit });
   } catch (err) {
     console.error(err);
@@ -54,16 +80,30 @@ app.get("/api/sessions", async (req, res) => {
 
 app.get("/api/sessions/:id", async (req, res) => {
   try {
-    const coll = db.collection(COLLECTION);
     const id = req.params.id;
-    let doc;
-    if (ObjectId.isValid(id) && new ObjectId(id).toString() === id) {
-      doc = await coll.findOne({ _id: new ObjectId(id) });
-    } else {
-      doc = await coll.findOne({ website_index: parseInt(id) || id });
-    }
-    if (!doc) return res.status(404).json({ error: "Session not found" });
-    res.json(doc);
+    const byId = /^\d+$/.test(id);
+    const result = await pool.query(
+      byId
+        ? "SELECT * FROM sessions WHERE id = $1"
+        : "SELECT * FROM sessions WHERE website_index = $1",
+      [byId ? parseInt(id, 10) : id]
+    );
+    const row = result.rows[0];
+    if (!row) return res.status(404).json({ error: "Session not found" });
+    res.json({
+      _id: row.id,
+      website_index: row.website_index,
+      title: row.title,
+      date: row.date,
+      time: row.time,
+      venue: row.venue,
+      room: row.room,
+      speakers: row.speakers,
+      description: row.description,
+      knowledge_partners: row.knowledge_partners,
+      watch_live_link: row.watch_live_link,
+      transcript: row.transcript || "",
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -72,26 +112,34 @@ app.get("/api/sessions/:id", async (req, res) => {
 
 app.patch("/api/sessions/:id/transcript", async (req, res) => {
   try {
-    const coll = db.collection(COLLECTION);
     const id = req.params.id;
-    const { transcript } = req.body;
-    const filter = ObjectId.isValid(id) && new ObjectId(id).toString() === id
-      ? { _id: new ObjectId(id) }
-      : { website_index: parseInt(id) || id };
-    const result = await coll.findOneAndUpdate(
-      filter,
-      { $set: { transcript: String(transcript ?? "") } },
-      { returnDocument: "after" }
+    const transcript = String(req.body.transcript ?? "");
+    const byId = /^\d+$/.test(id);
+    const result = await pool.query(
+      `UPDATE sessions SET transcript = $1 WHERE ${byId ? "id" : "website_index"} = $2 RETURNING *`,
+      [transcript, byId ? parseInt(id, 10) : id]
     );
-    if (!result) return res.status(404).json({ error: "Session not found" });
-    res.json(result);
+    const row = result.rows[0];
+    if (!row) return res.status(404).json({ error: "Session not found" });
+    res.json({
+      _id: row.id,
+      website_index: row.website_index,
+      title: row.title,
+      date: row.date,
+      time: row.time,
+      venue: row.venue,
+      room: row.room,
+      speakers: row.speakers,
+      description: row.description,
+      knowledge_partners: row.knowledge_partners,
+      watch_live_link: row.watch_live_link,
+      transcript: row.transcript || "",
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
-
-const PORT = parseInt(process.env.PORT) || 3000;
 
 connect()
   .then(() => {

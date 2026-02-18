@@ -8,7 +8,7 @@ const { readFileSync } = require("fs");
 const { join } = require("path");
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://mongo:azxd4sgjly0aqgfh@indian-ai-summit-sessions-ltrzho:27017";
-const DB_NAME = process.env.MONGODB_DB || "indiaai";
+const DB_NAME = process.env.MONGODB_DB || "admin";
 const COLLECTION = process.env.MONGODB_COLLECTION || "sessions";
 
 async function main() {

@@ -3,15 +3,18 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .session-card:hover {
-  border-color: var(--text-muted);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
 }
 
 .session-card.expanded {
   border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
 
 .card-header {
@@ -32,7 +35,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--accent);
-  background: rgba(29, 155, 240, 0.15);
+  background: var(--blue-light);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
 }
@@ -44,6 +47,7 @@
   font-weight: 600;
   margin: 0;
   line-height: 1.35;
+  color: var(--text);
 }
 
 .meta {
@@ -55,8 +59,8 @@
 .badge {
   font-size: 0.7rem;
   padding: 0.2rem 0.5rem;
-  background: rgba(0, 186, 124, 0.2);
-  color: var(--success);
+  background: var(--blue-light);
+  color: var(--accent);
   border-radius: 4px;
 }
 
@@ -78,7 +82,7 @@
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.25rem;
@@ -87,6 +91,7 @@
 .field p {
   margin: 0;
   font-size: 0.9rem;
+  color: var(--text);
 }
 
 .description {
@@ -120,7 +125,7 @@
 .transcript-header label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -145,13 +150,13 @@
 }
 
 .btn-save {
-  background: var(--success);
+  background: var(--accent);
   color: white;
   margin-right: 0.5rem;
 }
 
 .btn-save:hover:not(:disabled) {
-  filter: brightness(1.1);
+  background: var(--accent-hover);
 }
 
 .btn-save:disabled {
@@ -160,7 +165,7 @@
 }
 
 .btn-cancel {
-  background: transparent;
+  background: var(--surface);
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
@@ -174,7 +179,7 @@
   padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   font-family: inherit;
   font-size: 0.9rem;
@@ -185,6 +190,7 @@
 .transcript-input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--blue-light);
 }
 
 .transcript-display {
@@ -195,6 +201,7 @@
   white-space: pre-wrap;
   max-height: 200px;
   overflow-y: auto;
+  border: 1px solid var(--border);
 }
 
 .transcript-placeholder {
@@ -206,9 +213,9 @@
   display: block;
   margin-top: 0.5rem;
   font-size: 0.8rem;
-  color: var(--success);
+  color: var(--accent);
 }
 
 .save-status.error {
-  color: #f44336;
+  color: #b91c1c;
 }
