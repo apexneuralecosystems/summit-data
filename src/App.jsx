@@ -44,6 +44,16 @@ export default function App() {
     );
   };
 
+  const handlePeopleUpdate = (sessionId, newPeople) => {
+    setSessions((prev) =>
+      prev.map((s) =>
+        (s._id === sessionId || s.website_index === sessionId)
+          ? { ...s, people: newPeople }
+          : s
+      )
+    );
+  };
+
   const totalPages = Math.ceil(total / limit) || 1;
 
   return (
@@ -70,7 +80,7 @@ export default function App() {
           <>
             <div className="session-grid">
               {sessions.map((s) => (
-                <SessionCard key={s._id} session={s} onTranscriptUpdate={handleTranscriptUpdate} />
+                <SessionCard key={s._id} session={s} onTranscriptUpdate={handleTranscriptUpdate} onPeopleUpdate={handlePeopleUpdate} />
               ))}
             </div>
             <div className="pagination">

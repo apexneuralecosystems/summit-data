@@ -3,8 +3,31 @@
  * GET /api/sessions - list all
  * GET /api/sessions/:id - get one by id or website_index
  * PATCH /api/sessions/:id/transcript - update transcript
+ * PATCH /api/sessions/:id/people - update people (name, linkedin_url)
  */
 require("dotenv/config");
+
+function mapRow(row) {
+  let people = [];
+  try {
+    if (row.people != null) people = Array.isArray(row.people) ? row.people : JSON.parse(row.people || "[]");
+  } catch (_) {}
+  return {
+    _id: row.id,
+    website_index: row.website_index,
+    title: row.title,
+    date: row.date,
+    time: row.time,
+    venue: row.venue,
+    room: row.room,
+    speakers: row.speakers,
+    description: row.description,
+    knowledge_partners: row.knowledge_partners,
+    watch_live_link: row.watch_live_link,
+    transcript: row.transcript || "",
+    people,
+  };
+}
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
@@ -59,27 +82,14 @@ app.get("/api/sessions", async (req, res) => {
 
     params.push(limit, offset);
     const sessionsResult = await pool.query(
-      `SELECT id, website_index, title, date, "time", venue, room, speakers, description, knowledge_partners, watch_live_link, transcript
+      `SELECT id, website_index, title, date, "time", venue, room, speakers, description, knowledge_partners, watch_live_link, transcript, people
        FROM sessions ${where}
        ORDER BY website_index ASC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
 
-    const sessions = sessionsResult.rows.map((row) => ({
-      _id: row.id,
-      website_index: row.website_index,
-      title: row.title,
-      date: row.date,
-      time: row.time,
-      venue: row.venue,
-      room: row.room,
-      speakers: row.speakers,
-      description: row.description,
-      knowledge_partners: row.knowledge_partners,
-      watch_live_link: row.watch_live_link,
-      transcript: row.transcript || "",
-    }));
+    const sessions = sessionsResult.rows.map(mapRow);
 
     res.json({ sessions, total, page, limit });
   } catch (err) {
@@ -100,20 +110,7 @@ app.get("/api/sessions/:id", async (req, res) => {
     );
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: "Session not found" });
-    res.json({
-      _id: row.id,
-      website_index: row.website_index,
-      title: row.title,
-      date: row.date,
-      time: row.time,
-      venue: row.venue,
-      room: row.room,
-      speakers: row.speakers,
-      description: row.description,
-      knowledge_partners: row.knowledge_partners,
-      watch_live_link: row.watch_live_link,
-      transcript: row.transcript || "",
-    });
+    res.json(mapRow(row));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -131,20 +128,30 @@ app.patch("/api/sessions/:id/transcript", async (req, res) => {
     );
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: "Session not found" });
-    res.json({
-      _id: row.id,
-      website_index: row.website_index,
-      title: row.title,
-      date: row.date,
-      time: row.time,
-      venue: row.venue,
-      room: row.room,
-      speakers: row.speakers,
-      description: row.description,
-      knowledge_partners: row.knowledge_partners,
-      watch_live_link: row.watch_live_link,
-      transcript: row.transcript || "",
-    });
+    res.json(mapRow(row));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch("/api/sessions/:id/people", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const people = Array.isArray(req.body.people)
+      ? req.body.people.map((p) => ({
+          name: String(p.name ?? "").trim(),
+          linkedin_url: String(p.linkedin_url ?? "").trim(),
+        }))
+      : [];
+    const byId = /^\d+$/.test(id);
+    const result = await pool.query(
+      `UPDATE sessions SET people = $1::jsonb WHERE ${byId ? "id" : "website_index"} = $2 RETURNING *`,
+      [JSON.stringify(people), byId ? parseInt(id, 10) : id]
+    );
+    const row = result.rows[0];
+    if (!row) return res.status(404).json({ error: "Session not found" });
+    res.json(mapRow(row));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

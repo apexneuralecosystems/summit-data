@@ -23,9 +23,10 @@ async function main() {
   await client.query("TRUNCATE TABLE sessions RESTART IDENTITY");
 
   for (const r of data) {
+    const peopleJson = JSON.stringify(r.people && Array.isArray(r.people) ? r.people : []);
     await client.query(
-      `INSERT INTO sessions (website_index, title, date, "time", venue, room, speakers, description, knowledge_partners, watch_live_link, transcript)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      `INSERT INTO sessions (website_index, title, date, "time", venue, room, speakers, description, knowledge_partners, watch_live_link, transcript, people)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)`,
       [
         r.website_index,
         r.title ?? "",
@@ -38,6 +39,7 @@ async function main() {
         r.knowledge_partners ?? "",
         r.watch_live_link ?? "",
         r.transcript ?? "",
+        peopleJson,
       ]
     );
   }
