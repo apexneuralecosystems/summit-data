@@ -47,6 +47,8 @@ export default function SessionCard({ session, onTranscriptUpdate, onPeopleUpdat
   const [people, setPeople] = useState(() => defaultPeople(session.people));
   const [savingPeople, setSavingPeople] = useState(false);
   const [peopleSaveStatus, setPeopleSaveStatus] = useState(null);
+  const [fetchingTranscript, setFetchingTranscript] = useState(false);
+  const [fetchTranscriptError, setFetchTranscriptError] = useState(null);
 
   const id = session._id ?? session.website_index;
   const speakersList = useMemo(() => parseList(session.speakers), [session.speakers]);
@@ -112,6 +114,26 @@ export default function SessionCard({ session, onTranscriptUpdate, onPeopleUpdat
   };
 
   const hasTranscript = (session.transcript ?? "").trim().length > 0;
+
+  const handleFetchFromYouTube = async () => {
+    setFetchTranscriptError(null);
+    setFetchingTranscript(true);
+    try {
+      const res = await fetch(`${API}/sessions/${id}/fetch-transcript`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || res.statusText);
+      }
+      const updated = await res.json();
+      onTranscriptUpdate?.(id, updated.transcript);
+      setTranscript(updated.transcript || "");
+      setEditMode(false);
+    } catch (e) {
+      setFetchTranscriptError(e.message);
+    } finally {
+      setFetchingTranscript(false);
+    }
+  };
 
   return (
     <article className="session-card session-card--design">
@@ -279,21 +301,36 @@ export default function SessionCard({ session, onTranscriptUpdate, onPeopleUpdat
         <div className="transcript-header">
           <h3 className="session-card__label">Transcript</h3>
           {hasTranscript && <span className="badge">Transcript</span>}
-          {!editMode ? (
-            <button type="button" className="btn-edit" onClick={() => setEditMode(true)}>
-              Edit
-            </button>
-          ) : (
-            <div className="transcript-actions">
-              <button type="button" className="btn-save" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving" : "Save"}
+          <div className="transcript-header-actions">
+            {youtubeId && (
+              <button
+                type="button"
+                className="btn-fetch-transcript"
+                onClick={handleFetchFromYouTube}
+                disabled={fetchingTranscript}
+              >
+                {fetchingTranscript ? "Fetching…" : "Fetch from YouTube"}
               </button>
-              <button type="button" className="btn-cancel" onClick={handleCancel}>
-                Cancel
+            )}
+            {!editMode ? (
+              <button type="button" className="btn-edit" onClick={() => setEditMode(true)}>
+                Edit
               </button>
-            </div>
-          )}
+            ) : (
+              <div className="transcript-actions">
+                <button type="button" className="btn-save" onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving" : "Save"}
+                </button>
+                <button type="button" className="btn-cancel" onClick={handleCancel}>
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+        {fetchTranscriptError && (
+          <div className="transcript-fetch-error">{fetchTranscriptError}</div>
+        )}
         {editMode ? (
           <textarea
             value={transcript}
@@ -305,7 +342,9 @@ export default function SessionCard({ session, onTranscriptUpdate, onPeopleUpdat
         ) : (
           <div className="transcript-display">
             {(session.transcript ?? "").trim() || (
-              <span className="transcript-placeholder">No transcript yet. Click Edit to add.</span>
+              <span className="transcript-placeholder">
+                {youtubeId ? "No transcript yet. Click “Fetch from YouTube” or Edit to add." : "No transcript yet. Click Edit to add."}
+              </span>
             )}
           </div>
         )}

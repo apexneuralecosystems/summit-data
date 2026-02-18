@@ -8,6 +8,7 @@
     "migrate:status": "migrate-mongo status",
     "seed": "node scripts/seed-sessions.js",
     "seed:postgres": "node scripts/seed-postgres.js",
+    "fetch-transcripts": "node scripts/fetch-youtube-transcripts.js",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "node server/index.js",
     "client": "vite",
@@ -20,7 +21,8 @@
     "express": "^4.18.0",
     "migrate-mongo": "^11.0.0",
     "mongodb": "^6.0.0",
-    "pg": "^8.11.0"
+    "pg": "^8.11.0",
+    "youtube-transcript": "^1.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",

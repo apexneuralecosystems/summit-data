@@ -4,8 +4,10 @@
  * GET /api/sessions/:id - get one by id or website_index
  * PATCH /api/sessions/:id/transcript - update transcript
  * PATCH /api/sessions/:id/people - update people (name, linkedin_url)
+ * POST /api/sessions/:id/fetch-transcript - fetch YouTube transcript and save to DB
  */
 require("dotenv/config");
+const { YoutubeTranscript } = require("youtube-transcript");
 
 function mapRow(row) {
   let people = [];
@@ -152,6 +154,35 @@ app.patch("/api/sessions/:id/people", async (req, res) => {
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: "Session not found" });
     res.json(mapRow(row));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+function getYoutubeVideoId(url) {
+  if (!url || typeof url !== "string") return null;
+  const match = url.trim().match(/(?:v=|youtu\.be\/|youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
+app.post("/api/sessions/:id/fetch-transcript", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const byId = /^\d+$/.test(id);
+    const result = await pool.query(
+      byId ? "SELECT * FROM sessions WHERE id = $1" : "SELECT * FROM sessions WHERE website_index = $1",
+      [byId ? parseInt(id, 10) : id]
+    );
+    const row = result.rows[0];
+    if (!row) return res.status(404).json({ error: "Session not found" });
+    const videoId = getYoutubeVideoId(row.watch_live_link);
+    if (!videoId) return res.status(400).json({ error: "Session has no YouTube watch link" });
+    const transcript = await YoutubeTranscript.fetchTranscript(row.watch_live_link);
+    const text = transcript.map((t) => t.text).join(" ");
+    await pool.query("UPDATE sessions SET transcript = $1 WHERE id = $2", [text, row.id]);
+    const updated = await pool.query("SELECT * FROM sessions WHERE id = $1", [row.id]);
+    res.json(mapRow(updated.rows[0]));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
