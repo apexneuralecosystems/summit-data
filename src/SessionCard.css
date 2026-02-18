@@ -42,30 +42,6 @@
   flex-shrink: 0;
 }
 
-.btn-calendar {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.5rem 0.85rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #fff;
-  background: #7c3aed;
-  border-radius: 8px;
-  text-decoration: none;
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-calendar:hover {
-  background: #6d28d9;
-}
-
-.btn-calendar__icon {
-  font-size: 1rem;
-}
-
 .btn-watch {
   display: inline-flex;
   align-items: center;
@@ -199,6 +175,15 @@
 
 .session-card__watch-url:hover {
   text-decoration: underline;
+}
+
+.session-card__watch-url-display {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  word-break: break-all;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .session-card__watch-preview {

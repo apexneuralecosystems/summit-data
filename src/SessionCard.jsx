@@ -25,33 +25,12 @@ function getYoutubeId(url) {
   return null;
 }
 
-/** Build Google Calendar "Add event" URL */
-function addToCalendarUrl(session) {
-  const text = encodeURIComponent(session.title || "Session");
-  const dateStr = session.date || ""; // e.g. "16 Feb 2026"
-  const timeStr = (session.time || "").split("-")[0].trim() || "9:00"; // e.g. "9:30 AM"
-  const details = encodeURIComponent(
-    [session.venue, session.room, session.speakers, session.description].filter(Boolean).join("\n\n")
-  );
-  const location = encodeURIComponent([session.venue, session.room].filter(Boolean).join(", "));
-  let dates = "";
-  try {
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      dates = `${y}${m}${day}T090000/${y}${m}${day}T100000`;
-    }
-  } catch (_) {}
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text,
-    details: details || text,
-    location,
-  });
-  if (dates) params.set("dates", dates);
-  return `https://www.google.com/calendar/render?${params.toString()}`;
+/** Format watch URL for display (clean YouTube or full URL) */
+function formatWatchUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  const id = getYoutubeId(url);
+  if (id) return `https://www.youtube.com/watch?v=${id}`;
+  return url;
 }
 
 const DESC_PREVIEW_LEN = 280;
@@ -138,24 +117,14 @@ export default function SessionCard({ session, onTranscriptUpdate, onPeopleUpdat
     <article className="session-card session-card--design">
       <div className="session-card__top">
         <h2 className="session-card__title">{session.title}</h2>
-        <div className="session-card__actions">
-          <a
-            href={addToCalendarUrl(session)}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-calendar"
-            aria-label="Add to Calendar"
-          >
-            <span className="btn-calendar__icon" aria-hidden>📅</span>
-            Add to Calendar
-          </a>
-          {watchUrl && (
+        {watchUrl && (
+          <div className="session-card__actions">
             <a href={watchUrl} target="_blank" rel="noreferrer" className="btn-watch">
               <span className="btn-watch__icon" aria-hidden>▶</span>
               Watch Live
             </a>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="session-card__meta">
@@ -238,8 +207,11 @@ export default function SessionCard({ session, onTranscriptUpdate, onPeopleUpdat
               className="session-card__watch-url"
               title={watchUrl}
             >
-              {watchUrl}
+              {youtubeId ? "Watch on YouTube" : "Watch"}
             </a>
+            <div className="session-card__watch-url-display" title={watchUrl}>
+              {formatWatchUrl(watchUrl)}
+            </div>
             {youtubeId && (
               <div className="session-card__watch-preview">
                 <iframe
