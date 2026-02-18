@@ -30,4 +30,5 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 
-CMD ["node", "server/index.js"]
+# Load session data on startup (or skip if DB unavailable), then start the server
+CMD ["sh", "-c", "node scripts/seed-postgres.js || true; exec node server/index.js"]
